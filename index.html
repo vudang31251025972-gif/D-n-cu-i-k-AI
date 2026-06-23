@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chỉ Tay AI — Xem chỉ tay trực tuyến bằng AI</title>
+ 
+<script>
+  // Đặt theme đã lưu (hoặc theo hệ thống) NGAY trước khi vẽ trang, tránh nháy sai giao diện.
+  (function () {
+    try {
+      var saved = localStorage.getItem("chi-tay-ai-theme");
+      var theme = (saved === "light" || saved === "dark")
+        ? saved
+        : (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", theme);
+    } catch (e) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  })();
+</script>
+ 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,500;0,600;1,500&family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+ 
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+ 
+<!-- ===================== NỀN HUYỀN ẢO (trang trí) ===================== -->
+<div class="bg-aura" aria-hidden="true"></div>
+ 
+<!-- ===================== HEADER ===================== -->
+<header class="site-header">
+  <div class="wordmark">
+    <span class="wordmark-glyph">掌</span>
+    <div class="wordmark-text">
+      <span class="wordmark-title">Chỉ Tay <em>AI</em></span>
+      <span class="wordmark-sub">Đọc bàn tay bằng trí tuệ nhân tạo</span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-icon" id="btnThemeToggle" type="button" aria-label="Chuyển giao diện sáng/tối" title="Chuyển giao diện sáng/tối">
+      <svg viewBox="0 0 24 24" class="icon icon-sun"><circle cx="12" cy="12" r="4.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.6M12 18.9v2.6M4.1 4.1l1.85 1.85M18.05 18.05l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.1 19.9l1.85-1.85M18.05 5.95l1.85-1.85" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 24 24" class="icon icon-moon"><path d="M20.2 14.7A8.6 8.6 0 1 1 9.3 3.8a7.1 7.1 0 0 0 10.9 10.9Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="btn-ghost" id="btnAbout" type="button">Cách hoạt động</button>
+  </div>
+</header>
+ 
+<main>
+ 
+  <!-- ===================== SECTION 1: QUÉT TAY ===================== -->
+  <section class="scan-section" id="scanSection">
+ 
+    <!-- ---- Khu vực camera / ảnh (khu vực hiển thị) ---- -->
+    <div class="viewport-panel">
+ 
+      <div class="mode-toggle" role="tablist" aria-label="Chọn cách đưa ảnh vào">
+        <button class="mode-btn is-active" id="modeWebcamBtn" role="tab" aria-selected="true" type="button">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+          Qua Webcam
+        </button>
+        <button class="mode-btn" id="modeUploadBtn" role="tab" aria-selected="false" type="button">
+          <svg viewBox="0 0 24 24" class="icon"><path d="M12 16V4M12 4 8 8M12 4l4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Tải ảnh lên
+        </button>
+      </div>
+ 
+      <!-- Webcam view -->
+      <div class="stage" id="webcamStage">
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="overlayCanvas"></canvas>
+        <canvas id="captureCanvas" hidden></canvas>
+ 
+        <div class="hand-guide" id="handGuide">
+          <svg viewBox="0 0 200 240" class="hand-guide-svg">
+            <path d="M100 230c-28 0-46-20-50-44-2-12-2-26 0-40 1-8 4-13 9-13 6 0 8 7 8 16v18c0 3 2 5 4 5s4-2 4-5V40c0-9 3-16 10-16s10 7 10 16v66c0 3 2 5 4 5s4-2 4-5V30c0-9 3-16 10-16s10 7 10 16v76c0 3 2 5 4 5s4-2 4-5V46c0-8 3-14 9-14 6 0 9 6 9 14 0 22 1 44-1 62-2 24-19 46-48 46Z"/>
+          </svg>
+        </div>
+ 
+        <svg class="hold-ring" id="holdRing" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="52" class="hold-ring-track"/>
+          <circle cx="60" cy="60" r="52" class="hold-ring-fill" id="holdRingFill"/>
+        </svg>
+ 
+        <div class="stage-status" id="stageStatus">Đưa bàn tay vào khung để bắt đầu quét…</div>
+      </div>
+ 
+      <!-- Upload view -->
+      <div class="stage" id="uploadStage" hidden>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <div class="dropzone" id="dropzone">
+          <svg viewBox="0 0 24 24" class="icon icon-lg"><path d="M12 16V4M12 4 8 8M12 4l4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <p>Kéo ảnh vào đây, hoặc <span class="link-text">chọn ảnh từ máy</span></p>
+          <span class="hint">Chụp lòng bàn tay rõ nét, đủ sáng, không bị che khuất các đường chỉ tay</span>
+        </div>
+        <img id="uploadPreview" alt="Ảnh bàn tay đã tải lên" hidden>
+      </div>
+ 
+      <div class="stage-actions">
+        <button class="btn-capture" id="btnCapture" type="button" disabled>
+          <svg viewBox="0 0 24 24" class="icon"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+          Chụp ảnh
+        </button>
+        <button class="btn-secondary" id="btnRetry" type="button" hidden>Quét lại</button>
+      </div>
+    </div>
+ 
+    <!-- ---- Khu vực điều khiển / hướng dẫn ---- -->
+    <div class="info-panel">
+      <p class="eyebrow">Quy trình quét</p>
+      <h1>AI đọc 4 đường chỉ tay <em>chỉ trong vài giây</em></h1>
+      <p class="lede">Hệ thống dùng 4 mô hình AI riêng biệt — phân tích Sinh Đạo, Sự Nghiệp, Tâm Đạo và Trí Đạo từ một bức ảnh lòng bàn tay duy nhất.</p>
+ 
+      <ol class="steps">
+        <li>
+          <span class="step-num">01</span>
+          <div><strong>Đặt tay vào khung</strong><p>Lòng bàn tay hướng vào camera, ngón tay xoè nhẹ, đủ sáng.</p></div>
+        </li>
+        <li>
+          <span class="step-num">02</span>
+          <div><strong>Giữ yên 3 giây</strong><p>Vòng tròn vàng đầy lên khi AI xác nhận đã thấy rõ bàn tay.</p></div>
+        </li>
+        <li>
+          <span class="step-num">03</span>
+          <div><strong>Nhận kết quả</strong><p>4 mô hình AI chấm điểm và luận giải, hiển thị ngay phía dưới.</p></div>
+        </li>
+      </ol>
+ 
+      <div class="status-feed" id="statusFeed">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Đang chờ kết nối camera…</span>
+      </div>
+    </div>
+  </section>
+ 
+  <!-- ===================== SECTION 2: KẾT QUẢ ===================== -->
+  <section class="results-section" id="resultsSection">
+    <div class="results-header">
+      <p class="eyebrow">Kết quả luận giải</p>
+      <h2>4 đường chỉ tay của bạn</h2>
+    </div>
+ 
+    <!-- Trạng thái lỗi -->
+    <div class="results-error" id="resultsError" hidden>
+      <p id="errorText"></p>
+    </div>
+ 
+    <!-- Lưới 4 thẻ kết quả -->
+    <div class="results-grid" id="resultsGrid" hidden>
+ 
+      <article class="result-card" id="card-sinh_dao" data-line="sinh_dao">
+        <header class="card-head">
+          <svg viewBox="0 0 24 24" class="icon card-icon"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3c2-3 7-1 7 4 0 6-9 10-9 10Z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          <div><h3>Đường Sinh Đạo</h3><span class="card-sub">Sức khỏe &amp; Tuổi thọ</span></div>
+        </header>
+        <div class="card-gauge">
+          <div class="result-badge result-badge--sinh_dao" data-badge>
+            <span class="badge-nhan" data-score>—</span>
+            <span class="badge-confidence" data-label></span>
+          </div>
+          <p class="card-text" data-luangiai></p>
+        </div>
+        <div class="card-highlights">
+          <span class="card-section-label">Điểm nổi bật</span>
+          <ul data-highlights></ul>
+        </div>
+        <div class="card-advice">
+          <span class="card-section-label">Lời khuyên</span>
+          <p data-advice></p>
+        </div>
+      </article>
+ 
+      <article class="result-card" id="card-su_nghiep" data-line="su_nghiep">
+        <header class="card-head">
+          <svg viewBox="0 0 24 24" class="icon card-icon"><path d="M4 19V9l8-5 8 5v10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 19v-6h6v6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          <div><h3>Đường Sự Nghiệp</h3><span class="card-sub">Thành công &amp; Công danh</span></div>
+        </header>
+        <div class="card-gauge">
+          <div class="result-badge result-badge--su_nghiep" data-badge>
+            <span class="badge-nhan" data-score>—</span>
+            <span class="badge-confidence" data-label></span>
+          </div>
+          <p class="card-text" data-luangiai></p>
+        </div>
+        <div class="card-highlights">
+          <span class="card-section-label">Điểm nổi bật</span>
+          <ul data-highlights></ul>
+        </div>
+        <div class="card-advice">
+          <span class="card-section-label">Lời khuyên</span>
+          <p data-advice></p>
+        </div>
+      </article>
+ 
+      <article class="result-card" id="card-tam_dao" data-line="tam_dao">
+        <header class="card-head">
+          <svg viewBox="0 0 24 24" class="icon card-icon"><path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11Z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          <div><h3>Đường Tâm Đạo</h3><span class="card-sub">Tình duyên &amp; Cảm xúc</span></div>
+        </header>
+        <div class="card-gauge">
+          <div class="result-badge result-badge--tam_dao" data-badge>
+            <span class="badge-nhan" data-score>—</span>
+            <span class="badge-confidence" data-label></span>
+          </div>
+          <p class="card-text" data-luangiai></p>
+        </div>
+        <div class="card-highlights">
+          <span class="card-section-label">Điểm nổi bật</span>
+          <ul data-highlights></ul>
+        </div>
+        <div class="card-advice">
+          <span class="card-section-label">Lời khuyên</span>
+          <p data-advice></p>
+        </div>
+      </article>
+ 
+      <article class="result-card" id="card-tri_dao" data-line="tri_dao">
+        <header class="card-head">
+          <svg viewBox="0 0 24 24" class="icon card-icon"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          <div><h3>Đường Trí Đạo</h3><span class="card-sub">Trí tuệ &amp; Tư duy</span></div>
+        </header>
+        <div class="card-gauge">
+          <div class="result-badge result-badge--tri_dao" data-badge>
+            <span class="badge-nhan" data-score>—</span>
+            <span class="badge-confidence" data-label></span>
+          </div>
+          <p class="card-text" data-luangiai></p>
+        </div>
+        <div class="card-highlights">
+          <span class="card-section-label">Điểm nổi bật</span>
+          <ul data-highlights></ul>
+        </div>
+        <div class="card-advice">
+          <span class="card-section-label">Lời khuyên</span>
+          <p data-advice></p>
+        </div>
+      </article>
+ 
+    </div>
+ 
+    <p class="disclaimer" id="disclaimerText">
+      Kết quả mang tính chiêm nghiệm — giải trí theo thuật xem chỉ tay dân gian, không phải kết luận y khoa hay tâm lý chính xác.
+    </p>
+  </section>
+ 
+</main>
+ 
+<footer class="site-footer">
+  <span>Đồ án học phần — Chỉ Tay AI</span>
+  <span class="dot-sep">·</span>
+  <span>4 mô hình AI: Sinh Đạo · Sự Nghiệp · Tâm Đạo · Trí Đạo</span>
+</footer>
+ 
+<!-- MediaPipe Hands: nhận diện 21 điểm mốc bàn tay thời gian thực -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+ 
+<script src="script.js"></script>
+</body>
+</html>
