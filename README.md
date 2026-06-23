@@ -1,1 +1,1 @@
-# D-n-cu-i-k-AI
+#Nhóm Tập học AI
